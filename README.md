@@ -12,6 +12,7 @@ DAX_Repository/
 ├── Time/
 │   └── Custom_Periods_with_Calculation_Groups/
 │       ├── Custom_Periods_DAX_Code.dax
+│       ├── custom_period_wth_static_table.dax
 │       └── README.md   // Documentation for Custom Periods
 │
 └── More_DAX_Solutions/ (To be added)
