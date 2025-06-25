@@ -1,0 +1,96 @@
+// Static Period Selection Table Creation for Time Intelligence in Power BI
+
+PeriodSelection =
+VAR _Today = TODAY()  // Store today's date
+VAR _DateStart = MIN(DIM_CALENDAR[date_id])  // First date from Date table
+VAR _DateEnd = MAX(DIM_CALENDAR[date_id])  // Last date from Date table
+
+// Calculate end dates for various past periods
+VAR _MonthEnd_1 = EOMONTH(_Today, -1)  // Last day of previous month
+VAR _MonthEnd_3 = EOMONTH(_Today, -4)  // Last day of 3 months ago
+VAR _MonthEnd_6 = EOMONTH(_Today, -7)  // Last day of 6 months ago
+VAR _MonthEnd_13 = EOMONTH(_Today, -14)  // Last day of 13 months ago
+VAR _YearEnd = EOMONTH(_Today, -13)  // Last day of 13 months ago (used for Last 12 Months logic)
+
+// Identify start of current quarter from alternate date table
+VAR _QuarterStart =
+    CALCULATE(
+        STARTOFQUARTER('DIM_CALENDAR (2)'[date_id_fk]),
+        YEAR('DIM_CALENDAR (2)'[date_id_fk]) = YEAR(_Today),
+        QUARTER('DIM_CALENDAR (2)'[date_id_fk]) = QUARTER(_Today)
+    )
+
+VAR LastMonthOfPreviousQuarter = DATE(YEAR(_QuarterStart), MONTH(_QuarterStart), -1)  // Last day of previous quarter
+
+//----------------------------------------------------------------------------------------------------------------------
+// Create tables for each period
+
+VAR YTD_excl_cMonth = 
+    CALENDAR(DATE(YEAR(_MonthEnd_1), 1, 1), _MonthEnd_1)  // Year-to-date excluding current month
+
+VAR YTD_incl_cMonth = 
+    CALENDAR(DATE(YEAR(_Today), 1, 1), _Today)  // Year-to-date including current month
+
+VAR Current_Month = 
+    CALENDAR(DATE(YEAR(_Today), MONTH(_Today), 1), _Today)  // Current month up to today
+
+VAR Last_Month = 
+    CALENDAR(DATE(YEAR(_MonthEnd_1), MONTH(_MonthEnd_1), 1), _MonthEnd_1)  // Previous month
+
+VAR Current_Quarter = 
+    CALENDAR(DATE(YEAR(_QuarterStart), MONTH(_QuarterStart), 1), EOMONTH(_QuarterStart, 2))  // Current quarter
+
+VAR Last_Quarter = 
+    CALENDAR(DATE(YEAR(_QuarterStart), MONTH(_QuarterStart) - 3, 1), EOMONTH(_QuarterStart, -1))  // Previous quarter
+
+VAR Current_Year = 
+    CALENDAR(DATE(YEAR(_Today), 1, 1), DATE(YEAR(_Today), 12, 31))  // Current year
+
+VAR Last_Year = 
+    CALENDAR(DATE(YEAR(_Today) - 1, 1, 1), DATE(YEAR(_Today) - 1, 12, 31))  // Previous year
+
+VAR Last_3_Months = 
+    CALENDAR(DATE(YEAR(_MonthEnd_3), MONTH(_MonthEnd_3), DAY(_MonthEnd_3) + 1), _MonthEnd_1)  // Last 3 full months
+
+VAR Last_6_Months = 
+    CALENDAR(DATE(YEAR(_MonthEnd_6), MONTH(_MonthEnd_6), DAY(_MonthEnd_6) + 1), _MonthEnd_1)  // Last 6 full months
+
+VAR Last_12_Months = 
+    CALENDAR(DATE(YEAR(_YearEnd), MONTH(_YearEnd), DAY(_YearEnd) + 1), _MonthEnd_1)  // Last 12 full months
+
+VAR Last_13_Months = 
+    CALENDAR(DATE(YEAR(_MonthEnd_13), MONTH(_MonthEnd_13), DAY(_MonthEnd_13) + 1), _MonthEnd_1)  // Last 13 full months
+
+VAR Current_Last_Year = 
+    CALENDAR(DATE(YEAR(_Today) - 1, 1, 1), DATE(YEAR(_Today), 12, 31))  // Current year plus previous year
+
+VAR All_time = 
+    CALENDAR(_DateStart, _DateEnd)  // Complete date range from Date table
+
+VAR _Custom = 
+    CALENDAR(_DateStart, _DateEnd)  // Placeholder for Custom period
+
+//----------------------------------------------------------------------------------------------------------------------
+// Combine all periods into a single table with attributes for identification and sorting
+
+VAR _Result =
+    UNION(
+        ADDCOLUMNS(YTD_excl_cMonth, "Period", "YTD excl cMonth", "SortOrder", 1, "max_mth_flg", IF(MONTH(_MonthEnd_1) = MONTH([Date]) && YEAR(_MonthEnd_1) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(YTD_incl_cMonth, "Period", "YTD incl cMonth", "SortOrder", 2, "max_mth_flg", IF(MONTH(_Today) = MONTH([Date]) && YEAR(_Today) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(Current_Month, "Period", "Current Month", "SortOrder", 3, "max_mth_flg", IF(MONTH(_Today) = MONTH([Date]) && YEAR(_Today) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(Last_Month, "Period", "Last Month", "SortOrder", 4, "max_mth_flg", IF(MONTH(_MonthEnd_1) = MONTH([Date]) && YEAR(_MonthEnd_1) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(Current_Quarter, "Period", "Current Quarter", "SortOrder", 5, "max_mth_flg", IF(MONTH(_Today) = MONTH([Date]) && YEAR(_Today) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(Last_Quarter, "Period", "Last Quarter", "SortOrder", 6, "max_mth_flg", IF(MONTH(LastMonthOfPreviousQuarter) = MONTH([Date]) && YEAR(LastMonthOfPreviousQuarter) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(Current_Year, "Period", "Current Year", "SortOrder", 7, "max_mth_flg", IF(MONTH(_Today) = MONTH([Date]) && YEAR(_Today) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(Last_Year, "Period", "Last Year", "SortOrder", 8, "max_mth_flg", IF(MONTH(_MonthEnd_1) = MONTH([Date]) && YEAR(_MonthEnd_1) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(Last_3_Months, "Period", "Last 3 Months", "SortOrder", 9, "max_mth_flg", IF(MONTH(_MonthEnd_1) = MONTH([Date]) && YEAR(_MonthEnd_1) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(Last_6_Months, "Period", "Last 6 Months", "SortOrder", 10, "max_mth_flg", IF(MONTH(_MonthEnd_1) = MONTH([Date]) && YEAR(_MonthEnd_1) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(Last_12_Months, "Period", "Last 12 Months", "SortOrder", 11, "max_mth_flg", IF(MONTH(_MonthEnd_1) = MONTH([Date]) && YEAR(_MonthEnd_1) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(Last_13_Months, "Period", "Last 13 Months", "SortOrder", 12, "max_mth_flg", IF(MONTH(_MonthEnd_1) = MONTH([Date]) && YEAR(_MonthEnd_1) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(Current_Last_Year, "Period", "Current & Last Year", "SortOrder", 13, "max_mth_flg", IF(MONTH(_Today) = MONTH([Date]) && YEAR(_Today) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(All_time, "Period", "All-time", "SortOrder", 14, "max_mth_flg", IF(MONTH(_Today) = MONTH([Date]) && YEAR(_Today) = YEAR([Date]), "Last Month", "All")),
+        ADDCOLUMNS(_Custom, "Period", "Custom", "SortOrder", 15, "max_mth_flg", IF(MONTH(_Today) = MONTH([Date]) && YEAR(_Today) = YEAR([Date]), "Last Month", "All"))
+    )
+
+RETURN
+    _Result
