@@ -9,7 +9,7 @@ This repository will continuously grow with new DAX solutions I have worked on d
 ```
 DAX_Repository/
 │
-├── Time/
+├── TIME_DIMENSION/
 │   └── Custom_Periods_with_Calculation_Groups/
 │       ├── Custom_Periods_DAX_Code.dax
 │       ├── custom_period_wth_static_table.dax
